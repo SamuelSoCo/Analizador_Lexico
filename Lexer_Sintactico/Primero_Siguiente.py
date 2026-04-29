@@ -1,6 +1,5 @@
 import collections
 
-# Estructura para almacenar la gramática y los conjuntos
 class AnalizadorGramatical:
     def __init__(self):
         self.gramatica = collections.OrderedDict()
@@ -8,8 +7,8 @@ class AnalizadorGramatical:
         self.terminales = set()
         self.primero = {}
         self.siguiente = {}
-        self.simbolo_vacio = "e"  # Representa epsilon (EPS)
-        self.fin_cadena = "$"     # Representa el final de la cadena
+        self.simbolo_vacio = "e"  
+        self.fin_cadena = "$"     
 
     def limpiar_datos(self):
         self.gramatica.clear()
@@ -19,157 +18,150 @@ class AnalizadorGramatical:
         self.siguiente.clear()
 
     def cargar_ejemplo_asignacion(self):
-        """Carga el ejemplo: A -> id = E ; | E -> id | E -> num"""
+        """Carga: A -> id = E ; | E -> id | E -> num"""
         self.limpiar_datos()
-        # Formato: Lista de listas para manejar tokens como 'id' o '='
         self.gramatica = {
             "A": [["id", "=", "E", ";"]],
             "E": [["id"], ["num"]]
         }
         self.no_terminales = ["A", "E"]
-        print("\n--> Ejemplo 'Asignación Simple' cargado con éxito.")
+        print("\n--> Ejemplo 'Asignación Simple' cargado.")
 
-    def es_terminal(self, token):
-        """Regla: Es terminal si empieza con minúscula o es símbolo, 
-        y no es un No Terminal definido."""
-        return not (token[0].isupper()) or token == self.simbolo_vacio
-
-    def validar_recursion_izquierda(self):
-        """REGLA: Si A -> A ..., el programa no debe continuar."""
-        for nt, producciones in self.gramatica.items():
-            for prod in producciones:
-                if prod[0] == nt:
-                    print(f"\n[ERROR CRÍTICO] Recursión izquierda detectada: {nt} -> {' '.join(prod)}")
-                    return False
-        return True
-
-    def validar_huerfanos(self):
-        """REGLA: Si un No Terminal aparece a la derecha pero no tiene producción."""
+    def identificar_terminales(self):
+        self.terminales.clear()
         for prods in self.gramatica.values():
             for p in prods:
                 for token in p:
-                    if token[0].isupper() and token != self.simbolo_vacio:
-                        if token not in self.gramatica:
-                            print(f"\n[ERROR] Símbolo No Terminal '{token}' no definido en la gramática.")
-                            return False
+                    if token not in self.gramatica and token != self.simbolo_vacio:
+                        self.terminales.add(token)
+
+    def mostrar_resumen_gramatica(self):
+        """Imprime la estructura de la gramática como en la diapositiva[cite: 2]"""
+        print("\n" + "="*40)
+        print("      ESTRUCTURA DE LA GRAMÁTICA")
+        print("="*40)
+        
+        print("\nReglas de Producción:")
+        contador = 1
+        for nt in self.no_terminales:
+            for prod in self.gramatica[nt]:
+                print(f"  {contador}. {nt} -> {' '.join(prod)}")
+                contador += 1
+        
+        self.identificar_terminales()
+        print(f"\nNo Terminales: {{ {', '.join(self.no_terminales)} }}")
+        print(f"Terminales:    {{ {', '.join(sorted(list(self.terminales)))} }}")
+        print(f"E. Inicial:    {self.no_terminales[0]}")
+        print("-" * 40)
+
+    def validar_gramatica(self):
+        """Validación de recursión izquierda y símbolos huérfanos[cite: 1]"""
+        for nt, producciones in self.gramatica.items():
+            for prod in producciones:
+                if prod[0] == nt:
+                    print(f"\n[ERROR] Recursión izquierda detectada en: {nt}")
+                    return False
+                for token in prod:
+                    if token[0].isupper() and token != self.simbolo_vacio and token not in self.gramatica:
+                        print(f"\n[ERROR] No Terminal '{token}' no definido.")
+                        return False
         return True
 
     def calcular_conjuntos(self):
-        """Bucle de Estabilidad para Primero y Siguiente."""
-        # Inicialización de mapas de conjuntos vacíos
+        """Algoritmo de estabilidad para Primero y Siguiente[cite: 1, 3]"""
         self.primero = {nt: set() for nt in self.no_terminales}
         self.siguiente = {nt: set() for nt in self.no_terminales}
-        
-        # Regla 1 de Siguiente: El símbolo inicial siempre lleva $
         self.siguiente[self.no_terminales[0]].add(self.fin_cadena)
 
-        estabilizado = False
-        while not estabilizado:
-            estabilizado = True
-            
-            # Guardamos estado actual para comparar cambios (Estabilidad)
-            estado_anterior = str(self.primero) + str(self.siguiente)
-
+        while True:
+            antes = str(self.primero) + str(self.siguiente)
             for nt in self.no_terminales:
                 for produccion in self.gramatica[nt]:
-                    
-                    # --- LÓGICA DE PRIMERO ---
-                    # Revisamos la producción de izquierda a derecha (Acumulación)
+                    # --- CÁLCULO DE PRIMERO ---
                     for i, token in enumerate(produccion):
-                        if self.es_terminal(token):
+                        if token not in self.gramatica or token == self.simbolo_vacio:
                             self.primero[nt].add(token)
-                            break # Si es terminal, aquí termina el Primero de esta regla
+                            break
                         else:
-                            # Si es No Terminal, heredamos sus Primeros (excepto epsilon)
                             self.primero[nt].update(self.primero[token] - {self.simbolo_vacio})
-                            # Solo si el No Terminal tiene epsilon, pasamos al siguiente token
                             if self.simbolo_vacio not in self.primero[token]:
                                 break
-                            # Si llegamos al final y todos tuvieron epsilon, el padre tiene epsilon
                             if i == len(produccion) - 1:
                                 self.primero[nt].add(self.simbolo_vacio)
-
-                    # --- LÓGICA DE SIGUIENTE ---
-                    # Buscamos a cada No Terminal dentro de la producción
+                    
+                    # --- CÁLCULO DE SIGUIENTE ---
                     for i, token in enumerate(produccion):
-                        if token in self.gramatica: # Si es un No Terminal (llave)
-                            
-                            # Mirar a la derecha para ver quién lo sigue
-                            encontrado_limite = False
+                        if token in self.gramatica:
+                            limite = False
                             for j in range(i + 1, len(produccion)):
-                                siguiente_token = produccion[j]
-                                
-                                if self.es_terminal(siguiente_token):
-                                    if siguiente_token != self.simbolo_vacio:
-                                        self.siguiente[token].add(siguiente_token)
-                                        encontrado_limite = True
-                                        break
+                                sig_token = produccion[j]
+                                if sig_token not in self.gramatica:
+                                    self.siguiente[token].add(sig_token)
+                                    limite = True
+                                    break
                                 else:
-                                    # Si lo que sigue es No Terminal, le robamos su PRIMERO
-                                    self.siguiente[token].update(self.primero[siguiente_token] - {self.simbolo_vacio})
-                                    if self.simbolo_vacio not in self.primero[siguiente_token]:
-                                        encontrado_limite = True
+                                    self.siguiente[token].update(self.primero[sig_token] - {self.simbolo_vacio})
+                                    if self.simbolo_vacio not in self.primero[sig_token]:
+                                        limite = True
                                         break
-                            
-                            # Regla de Herencia: Si está al final o lo que sigue es epsilon
-                            if not encontrado_limite:
-                                # El hijo hereda el SIGUIENTE de su padre (nt)
+                            if not limite:
                                 self.siguiente[token].update(self.siguiente[nt])
+            
+            if antes == (str(self.primero) + str(self.siguiente)):
+                break
 
-            # Verificación de Estabilidad
-            if estado_anterior != (str(self.primero) + str(self.siguiente)):
-                estabilizado = False
-
-    def imprimir_tabla(self):
-        print(f"\n{'No Terminal':<15} | {'Conjunto Primero':<30} | {'Conjunto Siguiente':<30}")
-        print("-" * 80)
+    def mostrar_tablas_finales(self):
+        """Impresión corregida con columnas alineadas"""
+        print("\n" + "-" * 75)
+        # Ajustamos el espaciado para que no se pierdan las columnas
+        print(f"{'No Terminal':<15} | {'Conjunto Primero':<25} | {'Conjunto Siguiente':<25}")
+        print("-" * 75)
+        
+        t_prim = set()
+        t_sig = set()
+        
         for nt in self.no_terminales:
-            p = "{" + ", ".join(sorted(self.primero[nt])) + "}"
-            s = "{" + ", ".join(sorted(self.siguiente[nt])) + "}"
-            print(f"{nt:<15} | {p:<30} | {s:<30}")
+            p = sorted(list(self.primero[nt]))
+            s = sorted(list(self.siguiente[nt]))
+            t_prim.update(p)
+            t_sig.update(s)
+            
+            p_str = "{" + ", ".join(p) + "}"
+            s_str = "{" + ", ".join(s) + "}"
+            # Usamos anchos fijos para que todo quede en su columna
+            print(f"{nt:<15} | {p_str:<25} | {s_str:<25}")
+        
+        print("\n--- Conjuntos Totales (Unión de todos los símbolos) ---")
+        print(f"Total Primero:   {{ {', '.join(sorted(list(t_prim)))} }}")
+        print(f"Total Siguiente: {{ {', '.join(sorted(list(t_sig)))} }}")
 
 def menu():
-    analizador = AnalizadorGramatical()
-    
+    app = AnalizadorGramatical()
     while True:
-        print("\n========================================")
-        print("   GENERADOR DE PRIMERO Y SIGUIENTE")
-        print("========================================")
-        print("1. Cargar ejemplo precargado (Asignación)")
-        print("2. Ingresar gramática manualmente")
-        print("3. Salir")
-        opcion = input("Seleccione una opción: ")
-
-        if opcion == "1":
-            analizador.cargar_ejemplo_asignacion()
-        elif opcion == "2":
-            analizador.limpiar_datos()
-            print("Ingrese reglas (Var -> Prod1 | Prod2). Escriba 'FIN' al terminar.")
+        print("========================\n1. Ejemplo Precargado (Asignación) \n2. Entrada Manual \n3. Salir\n========================")
+        op = input("Selección: \n>")
+        if op == "1": app.cargar_ejemplo_asignacion()
+        elif op == "2":
+            app.limpiar_datos()
+            print("Formato: NT -> prod1 prod2 | prod3. Escribe 'FIN' para procesar.")
             while True:
                 linea = input("> ")
                 if linea.upper() == "FIN": break
                 if "->" not in linea: continue
-                
                 izq, der = linea.split("->")
                 nt = izq.strip()
-                # Separar por | y luego por espacios para tokens multicarácter
                 prods = [p.strip().split() for p in der.split("|")]
-                
-                if nt not in analizador.gramatica:
-                    analizador.gramatica[nt] = []
-                    analizador.no_terminales.append(nt)
-                analizador.gramatica[nt].extend(prods)
-        elif opcion == "3":
-            break
+                if nt not in app.gramatica:
+                    app.gramatica[nt] = []
+                    app.no_terminales.append(nt)
+                app.gramatica[nt].extend(prods)
+        elif op == "3": break
         else: continue
 
-        # Validaciones de seguridad[cite: 1]
-        if not analizador.validar_recursion_izquierda(): continue
-        if not analizador.validar_huerfanos(): continue
-        
-        # Procesamiento
-        analizador.calcular_conjuntos()
-        analizador.imprimir_tabla()
+        if app.validar_gramatica():
+            app.mostrar_resumen_gramatica()
+            app.calcular_conjuntos()
+            app.mostrar_tablas_finales()
 
 if __name__ == "__main__":
     menu()
