@@ -17,15 +17,32 @@ class AnalizadorGramatical:
         self.primero.clear()
         self.siguiente.clear()
 
-    def cargar_ejemplo_asignacion(self):
-        """Carga: A -> id = E ; | E -> id | E -> num"""
+    # --- EJEMPLOS PRECARGADOS ---
+    def cargar_ejemplo_1(self):
+        self.limpiar_datos()
+        self.gramatica = {"A": [["id", "=", "E", ";"]], "E": [["id"], ["num"]]}
+        self.no_terminales = ["A", "E"]
+        print("\n[OK] Ejercicio 1: Asignación Simple cargado.")
+
+    def cargar_ejemplo_2(self):
         self.limpiar_datos()
         self.gramatica = {
-            "A": [["id", "=", "E", ";"]],
-            "E": [["id"], ["num"]]
+            "S": [["i", "c", "t", "S", "S'"], ["s"]],
+            "S'": [["a", "S"], ["e"]] 
         }
-        self.no_terminales = ["A", "E"]
-        print("\n--> Ejemplo 'Asignación Simple' cargado.")
+        self.no_terminales = ["S", "S'"]
+        print("\n[OK] Ejercicio 2: If-Then-Else cargado.")
+
+    def cargar_ejemplo_3(self):
+        self.limpiar_datos()
+        self.gramatica = {
+            "S": [["A", "B", "C"]],
+            "A": [["pub"], ["put"], ["e"]],
+            "B": [["static"], ["e"]],
+            "C": [["final"]]
+        }
+        self.no_terminales = ["S", "A", "B", "C"]
+        print("\n[OK] Ejercicio 3: Acumulación cargado.")
 
     def identificar_terminales(self):
         self.terminales.clear()
@@ -36,39 +53,40 @@ class AnalizadorGramatical:
                         self.terminales.add(token)
 
     def mostrar_resumen_gramatica(self):
-        """Imprime la estructura de la gramática como en la diapositiva[cite: 2]"""
-        print("\n" + "="*40)
+        """Imprime la estructura de la gramática de forma organizada"""
+        print("\n" + "="*50)
         print("      ESTRUCTURA DE LA GRAMÁTICA")
-        print("="*40)
-        
+        print("="*50)
         print("\nReglas de Producción:")
         contador = 1
         for nt in self.no_terminales:
             for prod in self.gramatica[nt]:
                 print(f"  {contador}. {nt} -> {' '.join(prod)}")
                 contador += 1
-        
         self.identificar_terminales()
         print(f"\nNo Terminales: {{ {', '.join(self.no_terminales)} }}")
         print(f"Terminales:    {{ {', '.join(sorted(list(self.terminales)))} }}")
         print(f"E. Inicial:    {self.no_terminales[0]}")
-        print("-" * 40)
+        print("-" * 50)
 
     def validar_gramatica(self):
-        """Validación de recursión izquierda y símbolos huérfanos[cite: 1]"""
+        """Valida recursión izquierda y símbolos no definidos"""
         for nt, producciones in self.gramatica.items():
             for prod in producciones:
+                # Validar recursión izquierda inmediata
                 if prod[0] == nt:
                     print(f"\n[ERROR] Recursión izquierda detectada en: {nt}")
                     return False
+                # Validar símbolos no definidos (Huérfanos)
                 for token in prod:
-                    if token[0].isupper() and token != self.simbolo_vacio and token not in self.gramatica:
-                        print(f"\n[ERROR] No Terminal '{token}' no definido.")
-                        return False
+                    if token[0].isupper() and token != self.simbolo_vacio:
+                        if token not in self.gramatica:
+                            print(f"\n[ERROR DE DEFINICIÓN] El No Terminal '{token}' no tiene producción.")
+                            return False
         return True
 
     def calcular_conjuntos(self):
-        """Algoritmo de estabilidad para Primero y Siguiente[cite: 1, 3]"""
+        """Bucle de estabilidad para obtener conjuntos Primero y Siguiente"""
         self.primero = {nt: set() for nt in self.no_terminales}
         self.siguiente = {nt: set() for nt in self.no_terminales}
         self.siguiente[self.no_terminales[0]].add(self.fin_cadena)
@@ -77,7 +95,7 @@ class AnalizadorGramatical:
             antes = str(self.primero) + str(self.siguiente)
             for nt in self.no_terminales:
                 for produccion in self.gramatica[nt]:
-                    # --- CÁLCULO DE PRIMERO ---
+                    # --- LÓGICA DE PRIMERO ---
                     for i, token in enumerate(produccion):
                         if token not in self.gramatica or token == self.simbolo_vacio:
                             self.primero[nt].add(token)
@@ -89,7 +107,7 @@ class AnalizadorGramatical:
                             if i == len(produccion) - 1:
                                 self.primero[nt].add(self.simbolo_vacio)
                     
-                    # --- CÁLCULO DE SIGUIENTE ---
+                    # --- LÓGICA DE SIGUIENTE ---
                     for i, token in enumerate(produccion):
                         if token in self.gramatica:
                             limite = False
@@ -111,52 +129,79 @@ class AnalizadorGramatical:
                 break
 
     def mostrar_tablas_finales(self):
-        """Impresión corregida con columnas alineadas"""
-        print("\n" + "-" * 75)
-        # Ajustamos el espaciado para que no se pierdan las columnas
-        print(f"{'No Terminal':<15} | {'Conjunto Primero':<25} | {'Conjunto Siguiente':<25}")
-        print("-" * 75)
+        """Impresión con anchos corregidos para una visualización clara"""
+        print("\n" + "-" * 85)
+        print(f"{'No Terminal':<15} | {'Conjunto Primero':<30} | {'Conjunto Siguiente':<30}")
+        print("-" * 85)
         
-        t_prim = set()
-        t_sig = set()
+        t_prim, t_sig = set(), set()
         
         for nt in self.no_terminales:
             p = sorted(list(self.primero[nt]))
             s = sorted(list(self.siguiente[nt]))
-            t_prim.update(p)
-            t_sig.update(s)
+            t_prim.update(p); t_sig.update(s)
             
             p_str = "{" + ", ".join(p) + "}"
             s_str = "{" + ", ".join(s) + "}"
-            # Usamos anchos fijos para que todo quede en su columna
-            print(f"{nt:<15} | {p_str:<25} | {s_str:<25}")
+            
+            print(f"{nt:<15} | {p_str:<30} | {s_str:<30}")
         
-        print("\n--- Conjuntos Totales (Unión de todos los símbolos) ---")
+        print("\n--- Conjuntos Totales (Unión de Todos los Conjuntos) ---")
         print(f"Total Primero:   {{ {', '.join(sorted(list(t_prim)))} }}")
         print(f"Total Siguiente: {{ {', '.join(sorted(list(t_sig)))} }}")
 
 def menu():
     app = AnalizadorGramatical()
     while True:
-        print("========================\n1. Ejemplo Precargado (Asignación) \n2. Entrada Manual \n3. Salir\n========================")
-        op = input("Selección: \n>")
-        if op == "1": app.cargar_ejemplo_asignacion()
+        print("\nPRIMERO Y SIGUIENTE")
+        print("======================")
+        print("1. Ver Ejemplos Precargados")
+        print("2. Entrada Manual")
+        print("3. Salir")
+        print("======================")
+        print("\nNotas:")
+        print("1.- Epsilon se representa exclusivamente con el símbolo 'e'.")
+        print("2.- No se permite recursión por la izquierda (error crítico).")
+        print("3.- Símbolos No Terminales sin producción propia serán marcados como error.")
+        print("-" * 20)
+        
+        op = input("Selección: ")
+        
+        if op == "1":
+            print("\n--- Seleccione Ejercicio ---")
+            print("a. Asignación Simple (A -> id = E ;)")
+            print("b. If-Then-Else (S -> i c t S S')")
+            print("c. Acumulación (S -> A B C)")
+            sub_op = input("Opción: ").lower()
+            if sub_op == "a": app.cargar_ejemplo_1()
+            elif sub_op == "b": app.cargar_ejemplo_2()
+            elif sub_op == "c": app.cargar_ejemplo_3()
+            else: continue
+            
         elif op == "2":
             app.limpiar_datos()
-            print("Formato: NT -> prod1 prod2 | prod3. Escribe 'FIN' para procesar.")
+            print("\nIngrese las reglas con el formato: NT -> prod1 prod2 | prod3")
+            print("Para procesar y ver resultados, escriba 'FIN'.")
             while True:
                 linea = input("> ")
                 if linea.upper() == "FIN": break
                 if "->" not in linea: continue
+                
                 izq, der = linea.split("->")
                 nt = izq.strip()
                 prods = [p.strip().split() for p in der.split("|")]
+                
                 if nt not in app.gramatica:
                     app.gramatica[nt] = []
                     app.no_terminales.append(nt)
                 app.gramatica[nt].extend(prods)
-        elif op == "3": break
-        else: continue
+                
+        elif op == "3": 
+            print("Saliendo del programa...")
+            break
+        else: 
+            print("Opción no válida.")
+            continue
 
         if app.validar_gramatica():
             app.mostrar_resumen_gramatica()
