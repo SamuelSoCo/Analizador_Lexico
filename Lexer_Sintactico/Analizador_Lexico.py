@@ -78,7 +78,28 @@ tokens=[
     'cons'
 ]
 
+#palabras reservadas que faltaron incluir
+reservadas={
+    
+    'else':'else',
+    'while':'while',
+    'int':'int',
+    'float':'float',
+    'print':'print',
+    'import':'import'
+    
+}
+
+#modificamos la lista de tpkens para incluir las palabras resercvadas
+tokens=tokens+list(reservadas.values())
+
+
 t_ignore=' \t'
+
+def t_COMENTARIO(t):
+    r'//.*'
+    pass  # No genera token, lo ignora completamente
+
 
 # Expresiones regulares
 
@@ -130,12 +151,15 @@ def t_STRING_DOBLE(t):
     t.value = t.value[1:-1] # Esto quita las comillas del valor final
     return t
 
+
+
+
 # token para IF
 def t_IF(t):
     r'IF'
     return t
 
-# Identificadores
+# Identificadores o palabras reservadas 
 
 def t_IDENTIFICADORES(t):
     r'[a-zA-Z_][a-zA-Z0-9_]*'
@@ -189,20 +213,20 @@ def t_IDENTIFICADORES(t):
 
 # Comentarios
 
-def t_COMENTARIO(t):
-    r'\/\/(.*?)\/\/'
-    return t
 
 def t_FMASMAS(t):
     r'i+'
     return t
 
+
 # Función para atrapar el error 3x 
 def t_ERROR_3X(t):
-    r'\d+[a-zA-Z_]+'
+    r'\d+[a-zA-Z_][a-zA-Z0-9_]*'
     global errores_Desc
     errores_Desc.append(f"Error Léxico: Identificador inválido '{t.value}' en la línea {t.lexer.lineno}")
-    t.lexer.skip(len(t.value))
+    #dejamos que el t_error se encargue o saltamos al siguiente espacio
+    print(f"Modo panico:Saltando identificador invalido '{t.value}'")
+    t.lexer.skip(len(t.value))#saltamos solo el inicio para que el modo panico busque el ';'
 
 # Numeros
 
@@ -225,13 +249,27 @@ def t_FALSE(t):
     return t
 
 # Manejo de errores
-
+#Funcion de manejo de errores modicicando para que permita el modo panico
+# Función de manejo de errores modificada (Modo Pánico Simple)
 def t_error(t):
-    global errores_Desc
-    errores_Desc.append(f"Simbolo no valido '{t.value[0]}' en la linea {t.lexer.lineno}")
-    t.lexer.skip(1)
-    
+    # Reportamos el carácter que originó el fallo
+    lexema_error = t.value[0]
+    lista_errores_lexicos.append(f"Carácter ilegal '{lexema_error}' en línea {t.lineno}")
+    print(f"Error Léxico: '{lexema_error}' en línea {t.lineno}. Sincronizando...")
 
+    # Buscamos el siguiente punto de estabilidad
+    delimitadores = [' ', '\t', '\n', ';', '{', '}', '(', ')']
+    
+    distancia = 0
+    for char in t.value:
+        if char in delimitadores:
+            break
+        distancia += 1
+    
+    # Si distancia es 0, significa que el error es el delimitador mismo (raro)
+    # o que el error está pegado a uno. Saltamos al menos 1.
+    salto = distancia if distancia > 0 else 1
+    t.lexer.skip(salto)
 
 # constructor del lexer
 
@@ -272,7 +310,7 @@ if __name__=='__main__':
     print("El area del circulo es:",area)
     """
     codigo1 = """int suma = 10;
-    float promedio = suma / 2;
+    float promedio// = suma / 2;
     if (promedio > 5) {
     resultado = promedio + 3x;
     }
