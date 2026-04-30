@@ -2,37 +2,39 @@ import collections
 
 class AnalizadorGramatical:
     def __init__(self):
-        # Almacena la gramatica manteniendo el orden de insercion de las reglas
+        # Almacena las reglas de produccion en un diccionario ordenado para preservar el simbolo inicial
         self.gramatica = collections.OrderedDict()
-        # Lista ordenada de simbolos No Terminales (ej. A, E, T)
+        # Lista para mantener el orden de aparicion de los simbolos No Terminales
         self.no_terminales = []
-        # Conjunto de simbolos Terminales (ej. id, +, num)
+        # Conjunto para identificar todos los simbolos Terminales unicos en la gramatica
         self.terminales = set()
-        # Diccionario para almacenar el conjunto Primero de cada No Terminal
+        # Estructura para almacenar los resultados del conjunto Primero de cada No Terminal
         self.primero = {}
-        # Diccionario para almacenar el conjunto Siguiente de cada No Terminal
+        # Estructura para almacenar los resultados del conjunto Siguiente de cada No Terminal
         self.siguiente = {}
-        # Definicion del simbolo para representar la cadena vacia (epsilon)
+        # Definicion del caracter estandar para representar la produccion vacia o epsilon
         self.simbolo_vacio = "e"  
-        # Definicion del simbolo de fin de cadena o fin de archivo
+        # Caracter especial que representa el marcador de fin de archivo o cadena
         self.fin_cadena = "$"     
 
     def limpiar_datos(self):
-        # Restablece todas las estructuras de datos para procesar una nueva gramatica
+        # Reinicia todas las variables y estructuras para permitir el procesamiento de una nueva gramatica
         self.gramatica.clear()
         self.no_terminales.clear()
         self.terminales.clear()
         self.primero.clear()
         self.siguiente.clear()
 
-    # --- EJEMPLOS PRECARGADOS ---
+    # --- METODOS DE CARGA DE EJEMPLOS ---
     def cargar_ejemplo_1(self):
+        # Configura una gramatica basica de asignacion para pruebas de flujo secuencial
         self.limpiar_datos()
         self.gramatica = {"A": [["id", "=", "E", ";"]], "E": [["id"], ["num"]]}
         self.no_terminales = ["A", "E"]
         print("\n[OK] Ejercicio 1: Asignación Simple cargado.")
 
     def cargar_ejemplo_2(self):
+        # Carga una gramatica con simbolos prima para probar la derivacion de vacios y recursion
         self.limpiar_datos()
         self.gramatica = {
             "S": [["i", "c", "t", "S", "S'"], ["s"]],
@@ -42,6 +44,7 @@ class AnalizadorGramatical:
         print("\n[OK] Ejercicio 2: If-Then-Else cargado.")
 
     def cargar_ejemplo_3(self):
+        # Establece una gramatica donde varios No Terminales pueden ser vacios consecutivamente
         self.limpiar_datos()
         self.gramatica = {
             "S": [["A", "B", "C"]],
@@ -53,7 +56,7 @@ class AnalizadorGramatical:
         print("\n[OK] Ejercicio 3: Acumulación cargado.")
 
     def identificar_terminales(self):
-        # Recorre toda la gramatica para encontrar simbolos que no son No Terminales
+        # Identifica como terminales aquellos simbolos que no poseen una regla de produccion propia
         self.terminales.clear()
         for prods in self.gramatica.values():
             for p in prods:
@@ -63,7 +66,7 @@ class AnalizadorGramatical:
                         self.terminales.add(token)
 
     def mostrar_resumen_gramatica(self):
-        """Imprime la estructura de la gramática de forma organizada"""
+        # Presenta la informacion procesada de la gramatica antes de realizar los calculos de conjuntos
         print("\n" + "="*50)
         print("      ESTRUCTURA DE LA GRAMÁTICA")
         print("="*50)
@@ -80,14 +83,14 @@ class AnalizadorGramatical:
         print("-" * 50)
 
     def validar_gramatica(self):
-        """Valida recursión izquierda y símbolos no definidos"""
+        # Verifica que la gramatica sea apta para el analisis evitando recursiones infinitas y simbolos sin definir
         for nt, producciones in self.gramatica.items():
             for prod in producciones:
-                # Validar recursión izquierda inmediata
+                # Comprueba si el No Terminal se llama a si mismo al inicio de la regla
                 if prod[0] == nt:
                     print(f"\n[ERROR] Recursión izquierda detectada en: {nt}")
                     return False
-                # Validar símbolos no definidos (Huérfanos)
+                # Asegura que cada simbolo No Terminal utilizado tenga asignada una regla de produccion
                 for token in prod:
                     if token[0].isupper() and token != self.simbolo_vacio:
                         if token not in self.gramatica:
@@ -96,62 +99,62 @@ class AnalizadorGramatical:
         return True
 
     def calcular_conjuntos(self):
-        """Bucle de estabilidad para obtener conjuntos Primero y Siguiente"""
+        # Algoritmo de punto fijo que itera hasta que los conjuntos Primero y Siguiente dejen de cambiar
         self.primero = {nt: set() for nt in self.no_terminales}
         self.siguiente = {nt: set() for nt in self.no_terminales}
-        # Regla inicial: el simbolo de fin de cadena se agrega al Siguiente del No Terminal inicial
+        # Condicion inicial: el simbolo de fin de cadena se coloca en el Siguiente del simbolo inicial
         self.siguiente[self.no_terminales[0]].add(self.fin_cadena)
 
         while True:
-            # Captura el estado previo para comparar si hubo cambios en esta iteracion
+            # Almacena el estado actual para verificar la estabilidad al final del bucle
             antes = str(self.primero) + str(self.siguiente)
             
             for nt in self.no_terminales:
                 for produccion in self.gramatica[nt]:
-                    # --- LÓGICA DE PRIMERO ---
+                    # --- LOGICA DE PRIMERO ---
                     for i, token in enumerate(produccion):
-                        # Si es terminal o vacio, se agrega y termina la revision de esa produccion
+                        # Si el simbolo es terminal o vacio, se agrega y se deja de analizar la produccion actual
                         if token not in self.gramatica or token == self.simbolo_vacio:
                             self.primero[nt].add(token)
                             break
                         else:
-                            # Si es No Terminal, agrega sus Primeros (excepto vacio)
+                            # Si es No Terminal, agrega sus simbolos Primero eliminando el vacio provisionalmente
                             self.primero[nt].update(self.primero[token] - {self.simbolo_vacio})
-                            # Si el No Terminal no deriva en vacio, se detiene el proceso aqui
+                            # Si el No Terminal no puede ser vacio, se detiene el analisis de la regla
                             if self.simbolo_vacio not in self.primero[token]:
                                 break
-                            # Si todos los simbolos de la produccion derivan en vacio, agregar vacio al padre
+                            # Si todos los simbolos previos son anulables, se agrega el vacio al conjunto Primero
                             if i == len(produccion) - 1:
                                 self.primero[nt].add(self.simbolo_vacio)
                     
-                    # --- LÓGICA DE SIGUIENTE ---
+                    # --- LOGICA DE SIGUIENTE ---
                     for i, token in enumerate(produccion):
                         if token in self.gramatica:
                             limite = False
                             for j in range(i + 1, len(produccion)):
                                 sig_token = produccion[j]
-                                # Si el siguiente es terminal, se agrega al Siguiente del actual
+                                # Si el simbolo a la derecha es terminal, se incluye en el Siguiente del token actual
                                 if sig_token not in self.gramatica:
                                     self.siguiente[token].add(sig_token)
                                     limite = True
                                     break
                                 else:
-                                    # Si el siguiente es No Terminal, agrega su Primero al Siguiente del actual
+                                    # Si es No Terminal, se añaden sus Primeros al Siguiente del token actual
                                     self.siguiente[token].update(self.primero[sig_token] - {self.simbolo_vacio})
-                                    # Si el siguiente No Terminal no contiene vacio, aqui termina la propagacion
+                                    # Si el simbolo a la derecha no genera vacio, se detiene la propagacion
                                     if self.simbolo_vacio not in self.primero[sig_token]:
                                         limite = True
                                         break
-                            # Si se llega al final de la produccion y todo puede ser vacio, hereda Siguiente del padre
+                            # Si se alcanza el final de la regla o todos los simbolos derechos son anulables, se hereda del padre
                             if not limite:
                                 self.siguiente[token].update(self.siguiente[nt])
             
-            # Condicion de salida: los conjuntos no crecieron en esta vuelta
+            # Compara el estado anterior con el actual; si son identicos, el algoritmo ha convergido
             if antes == (str(self.primero) + str(self.siguiente)):
                 break
 
     def mostrar_tablas_finales(self):
-        """Impresión con anchos corregidos para una visualización clara"""
+        # Genera una representacion tabular de los resultados finales para cada No Terminal
         print("\n" + "-" * 85)
         print(f"{'No Terminal':<15} | {'Conjunto Primero':<30} | {'Conjunto Siguiente':<30}")
         print("-" * 85)
@@ -173,7 +176,7 @@ class AnalizadorGramatical:
         print(f"Total Siguiente: {{ {', '.join(sorted(list(t_sig)))} }}")
 
 def menu():
-    # Interfaz de usuario para gestionar la entrada de datos y el flujo del programa
+    # Gestiona la navegacion del usuario, la carga de datos y la ejecucion de las validaciones y calculos
     app = AnalizadorGramatical()
     while True:
         print("\nPRIMERO Y SIGUIENTE")
@@ -226,7 +229,7 @@ def menu():
             print("Opción no válida.")
             continue
 
-        # Si la gramatica pasa las validaciones, se procede al calculo y muestra de resultados
+        # Realiza las comprobaciones de integridad y ejecuta el calculo de los conjuntos si no hay errores
         if app.validar_gramatica():
             app.mostrar_resumen_gramatica()
             app.calcular_conjuntos()
