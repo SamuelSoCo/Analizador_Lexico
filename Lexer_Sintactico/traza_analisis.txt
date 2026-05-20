@@ -1,0 +1,27 @@
+Pila: ['$', 'P'] | Token Actual: PROGRAM
+Pila: ['$', 'B', 'D', 'SEMICOLON', 'ID', 'PROGRAM'] | Token Actual: PROGRAM
+Pila: ['$', 'B', 'D', 'SEMICOLON', 'ID'] | Token Actual: ID
+Pila: ['$', 'B', 'D', 'SEMICOLON'] | Token Actual: SEMICOLON
+Pila: ['$', 'B', 'D'] | Token Actual: VAR
+Pila: ['$', 'B', 'L', 'VAR'] | Token Actual: VAR
+Pila: ['$', 'B', 'L'] | Token Actual: ID
+Pila: ['$', 'B', "L'", 'SEMICOLON', 'T', 'COLON', 'ID'] | Token Actual: ID
+Pila: ['$', 'B', "L'", 'SEMICOLON', 'T', 'COLON'] | Token Actual: COLON
+Pila: ['$', 'B', "L'", 'SEMICOLON', 'T'] | Token Actual: INT
+Pila: ['$', 'B', "L'", 'SEMICOLON', 'INT'] | Token Actual: INT
+Pila: ['$', 'B', "L'", 'SEMICOLON'] | Token Actual: BEGIN
+Error Sintáctico en línea 5: Se esperaba SEMICOLON, se recibió BEGIN (BEGIN)
+Pila: ['$', 'B'] | Token Actual: BEGIN
+Pila: ['$', 'END', 'S', 'BEGIN'] | Token Actual: BEGIN
+Pila: ['$', 'END', 'S'] | Token Actual: ID
+Pila: ['$', 'END', "S'", 'SEMICOLON', 'E', 'ASSIGN', 'ID'] | Token Actual: ID
+Pila: ['$', 'END', "S'", 'SEMICOLON', 'E', 'ASSIGN'] | Token Actual: ASSIGN
+Pila: ['$', 'END', "S'", 'SEMICOLON', 'E'] | Token Actual: NUM
+Pila: ['$', 'END', "S'", 'SEMICOLON', "E'", 'F'] | Token Actual: NUM
+Pila: ['$', 'END', "S'", 'SEMICOLON', "E'", 'NUM'] | Token Actual: NUM
+Pila: ['$', 'END', "S'", 'SEMICOLON', "E'"] | Token Actual: PLUS
+Pila: ['$', 'END', "S'", 'SEMICOLON', "E'", 'F', 'PLUS'] | Token Actual: PLUS
+Pila: ['$', 'END', "S'", 'SEMICOLON', "E'", 'F'] | Token Actual: SEMICOLON
+Error Sintáctico en línea 6: Se esperaba F, se recibió SEMICOLON (;)
+Pila: ['$'] | Token Actual: END
+Error Sintáctico en línea 7: Se esperaba $, se recibió END (END)
