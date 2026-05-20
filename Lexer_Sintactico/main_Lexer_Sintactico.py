@@ -1,4 +1,4 @@
-# Importamos las funciones y clases de tus 3 archivos anteriores
+# Importamos las funciones y clases de los 3 archivos anteriores
 from Analizador_Lexico1_2 import generar_lista_tokens
 from Tabla_ll1 import GeneradorTablas
 from Parser import ParserLL1

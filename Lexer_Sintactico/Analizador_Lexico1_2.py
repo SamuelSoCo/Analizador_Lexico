@@ -1,7 +1,6 @@
 import ply.lex as lex
 
 # 1. LISTA DE TOKENS EXTENDIDA
-# Incluye los obligatorios para el Parser y los extras que solicitaste.
 tokens = [
     'ID', 'NUM', 'SEMICOLON', 'COLON', 'ASSIGN', 
     'PLUS', 'MULT', 'LPAREN', 'RPAREN',
@@ -54,7 +53,7 @@ t_ignore = ' \t'
 
 def t_COMENTARIO(t):
     r'//.*'
-    pass # Ignora el comentario y no genera token, resolviendo tu duda de estabilidad.
+    pass # Ignora el comentario y no genera token, resolviendo la estabilidad.
 
 def t_CADENA(t):
     r'\"[^\"]*\"'
@@ -109,7 +108,6 @@ def generar_lista_tokens(codigo):
         if not tok:
             break  
         
-        # Estructura de objeto exigida por la rúbrica.
         lista_tokens.append({
             'tipo': tok.type,
             'valor': tok.value,
